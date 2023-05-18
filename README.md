@@ -30,7 +30,7 @@ cordova.plugins.NicepayCordova.payment(params);
 
 <br><br>
 
-- ###개발 편의성 제공
+### 개발 편의성 제공
   - window.Nicepay 내부 Constant 값 존재
   - data.NpLang 이 `"@SYSTEM"` 또는 `Nicepay.SYSTEM` 일 때 앱 언어 설정 값으로 설정됨.
   - data.CurrencyCode 이 `"@SYSTEM"` 또는 `Nicepay.SYSTEM` 일 때 앱 국가 설정 값으로 설정됨.
@@ -54,7 +54,7 @@ cordova.plugins.NicepayCordova.payment(params);
 
 <br><br>
 
-- ###호출 예시
+### 호출 예시
 ```javascript
 var params = {
     data: {
@@ -102,9 +102,10 @@ var params = {
 
 ## 응답
 
-- ###성공
+### 성공
 
-    1. 지정된 `Endpoint`에 도달 했을 경우.
+1. 지정된 `Endpoint`에 도달 했을 경우.
+    
         ```javascript
        response = {
           "status": "success",
@@ -112,9 +113,9 @@ var params = {
           "message": "결제 성공"
        }
        ```
-- ###실패
+### 실패
 
-    1. `https://web.nicepay.co.kr/v3/smart/common/error.jsp` 에 도달 했을 경우.
+1. `https://web.nicepay.co.kr/v3/smart/common/error.jsp` 에 도달 했을 경우.
   
         ```javascript
        response = {
@@ -126,7 +127,7 @@ var params = {
        }
        ```
        
-    2. 사용자가 결제 화면에서 이탈 했을 경우.
+2. 사용자가 결제 화면에서 이탈 했을 경우.
   
         ```javascript
        response = {
@@ -136,7 +137,7 @@ var params = {
        }
        ```
        
-    3. 결제 데이터 파싱에 실패 했을 경우.
+3. 결제 데이터 파싱에 실패 했을 경우.
   
         ```javascript
        response = {
