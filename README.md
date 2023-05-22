@@ -154,9 +154,9 @@ response = {
 
 ```javascript
 response = {
-       "status": "fail",
-       "resultCode": "-101",
-       "message": "결제 정보 오류"
+    "status": "fail",
+    "resultCode": "-101",
+    "message": "결제 정보 오류"
 }
 ```
 
