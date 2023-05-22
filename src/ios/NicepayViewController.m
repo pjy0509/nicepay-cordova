@@ -53,16 +53,17 @@ static void initializeBankAppScheme() {
     [super loadView];
 
     _isWebViewLoaded = NO;
+    _isRequestedWithHeader = NO;
     
     _webView = ({
-        WKPreferences *prefernces = [[WKPreferences alloc] init];
+        WKPreferences *preferences = [[WKPreferences alloc] init];
         WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
         WKProcessPool *processPool = [[WKProcessPool alloc] init];
         
         WKWebView *webView = [[WKWebView alloc] initWithFrame:self.view.bounds configuration:config];
         webView.allowsBackForwardNavigationGestures = NO;
         webView.configuration.processPool = processPool;
-        webView.configuration.preferences = prefernces;
+        webView.configuration.preferences = preferences;
         
         [WKWebsiteDataStore.defaultDataStore removeDataOfTypes:[WKWebsiteDataStore allWebsiteDataTypes] modifiedSince:[NSDate dateWithTimeIntervalSince1970:0] completionHandler:^{}];
         
@@ -102,43 +103,64 @@ static void initializeBankAppScheme() {
 {
     NSString *url = navigationAction.request.URL.absoluteString;
     
-    if ([self isEnd:url] || [self isFail:url]) {
-        [_webView stopLoading];
-        [_webView removeFromSuperview];
-        _webView.UIDelegate = nil;
-        _webView.navigationDelegate = nil;
-        
-        _webView = nil;
-        [[NSNotificationCenter defaultCenter] removeObserver:self name:CDVPluginHandleOpenURLNotification object:nil];
-        decisionHandler(WKNavigationActionPolicyCancel);
-        
-        if ([self isEnd:url]) {
-            NSDictionary *result = @{
-                @"status": @"success",
-                @"resultCode": @"100",
-                @"message": @"결제 완료"
-            };
-            [_delegate callback:[self parseJSONString:result] callbackId:_callbackId commandDelegate:_commandDelegate status:CDVCommandStatus_OK];
-        } else if ([self isFail:url]) {
-            NSURLComponents *urlComponents = [NSURLComponents componentsWithString:url];
-            NSMutableDictionary *queryParameters = [NSMutableDictionary dictionary];
+    if ([self isEnd:url]) {
+        NSDictionary *result = @{
+            @"status": @"success",
+            @"resultCode": @"100",
+            @"message": @"결제 완료"
+        };
 
-            for (NSURLQueryItem *queryItem in urlComponents.queryItems) {
-                [queryParameters setObject:[self decodeUnicodeString: queryItem.value] forKey:queryItem.name];
+        if (_header != nil && [url hasPrefix:[_params valueForKey:@"ReturnURL"]]) {
+            if (!_isRequestedWithHeader) {
+                _isRequestedWithHeader = YES;
+
+                NSDictionary *headerDictionary = [NSJSONSerialization JSONObjectWithData:[NSJSONSerialization dataWithJSONObject:_header options:NSJSONWritingPrettyPrinted error:nil] options:NSJSONReadingMutableContainers error:nil];
+                NSMutableURLRequest *mutableRequest = [navigationAction.request mutableCopy];
+                NSMutableDictionary *headers = [mutableRequest.allHTTPHeaderFields mutableCopy];
+
+                if (headers == nil) {
+                    headers = [NSMutableDictionary dictionary];
+                }
+
+                [headerDictionary enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+                    [headers setObject:obj forKey:key];
+                }];
+
+                mutableRequest.allHTTPHeaderFields = headers;
+
+                decisionHandler(WKNavigationActionPolicyCancel);
+
+                [self.webView loadRequest:mutableRequest];
+            } else {
+                decisionHandler(WKNavigationActionPolicyAllow);
+
+                [self callback: result status:&((CDVCommandStatus){CDVCommandStatus_OK}) withRemoveWKWebView:NO];
             }
-            
-            NSDictionary *result = @{
-                @"status": @"fail",
-                @"resultCode": [queryParameters valueForKey:@"errCd"],
-                @"message": [queryParameters valueForKey:@"errMsg"]
-            };
-            [_delegate callback:[self parseJSONString:result] callbackId:_callbackId commandDelegate:_commandDelegate status:CDVCommandStatus_ERROR];
+        } else {
+            decisionHandler(WKNavigationActionPolicyAllow);
+
+            [self callback: result status:&((CDVCommandStatus){CDVCommandStatus_OK}) withRemoveWKWebView:YES];
         }
-        
-        [self dismissViewControllerAnimated:YES completion:nil];
+    } else if ([self isFail:url]) {
+        NSURLComponents *urlComponents = [NSURLComponents componentsWithString:url];
+        NSMutableDictionary *queryParameters = [NSMutableDictionary dictionary];
+
+        for (NSURLQueryItem *queryItem in urlComponents.queryItems) {
+            [queryParameters setObject:[self decodeUnicodeString: queryItem.value] forKey:queryItem.name];
+        }
+
+        NSDictionary *result = @{
+            @"status": @"fail",
+            @"resultCode": [queryParameters valueForKey:@"errCd"],
+            @"message": [queryParameters valueForKey:@"errMsg"]
+        };
+
+        [self callback: result status:&((CDVCommandStatus){CDVCommandStatus_ERROR}) withRemoveWKWebView:YES];
+
+        decisionHandler(WKNavigationActionPolicyAllow);
     } else if ([self isApp:url]) {
         [self openBankApp:navigationAction.request.URL];
-        
+
         decisionHandler(WKNavigationActionPolicyCancel);
     } else {
         decisionHandler(WKNavigationActionPolicyAllow);
@@ -257,9 +279,8 @@ static void initializeBankAppScheme() {
             @"resultCode": @"-100",
             @"message": @"사용자 취소"
         };
-        
-        [self dismissViewControllerAnimated:YES completion:nil];
-        [self->_delegate callback:[self parseJSONString:result] callbackId:self->_callbackId commandDelegate:self->_commandDelegate status:CDVCommandStatus_ERROR];
+
+        [self callback: result status:&((CDVCommandStatus){CDVCommandStatus_ERROR}) withRemoveWKWebView:NO];
     }]];
     
     [self presentViewController:alert animated:YES completion:nil];
@@ -296,4 +317,23 @@ static void initializeBankAppScheme() {
 {
     
 }
+
+- (void) callback: (NSDictionary *) result status: (CDVCommandStatus *) status withRemoveWKWebView: (BOOL) withRemoveWKWebView
+{
+    [_delegate callback:[self parseJSONString:result] callbackId:_callbackId commandDelegate:_commandDelegate status:*status];
+
+    if (withRemoveWKWebView) {
+        [_webView stopLoading];
+        [_webView removeFromSuperview];
+        _webView.UIDelegate = nil;
+        _webView.navigationDelegate = nil;
+
+        _webView = nil;
+    }
+
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:CDVPluginHandleOpenURLNotification object:nil];
+
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
 @end

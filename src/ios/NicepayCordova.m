@@ -50,7 +50,8 @@
     vc.endpoint = [params valueForKey:@"Endpoint"];
     [params setValue:nil forKey:@"Endpoint"];
     vc.params = params;
-    
+    vc.header = [options valueForKey:@"withHeader"];
+
     // CDVInvokedUrlCommand, CDVCommandDelegate
     vc.callbackId = command.callbackId;
     vc.commandDelegate = self.commandDelegate;
