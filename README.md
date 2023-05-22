@@ -19,7 +19,8 @@ var params = {
         title: String, // Navigation Bar Title String 값 입니다.
         buttonColor: String, // Navigation Bar Button 색상 코드 또는 앱 System Color 명 String 값 입니다.
         titleColor: String, // Navigation Bar Title 색상 코드 또는 앱 System Color 명 String 값 입니다.
-        backgroundColor: String // Navigation Bar 배경 색상 코드 또는 앱 System Color 명 String 값 입니다.
+        backgroundColor: String, // Navigation Bar 배경 색상 코드 또는 앱 System Color 명 String 값 입니다.
+        withHeader: Object // 인증 처리 후 Redirect URL 에 함께 전송할 Header Key-Value Object 값 입니다.
     },
     onSuccess: Function,
     onFail: Function
@@ -86,7 +87,10 @@ var params = {
         title: Nicepay.SYSTEM,
         buttonColor: Nicepay.Color(0, 0, 0),
         titleColor: Nicepay.Color(0, 0, 0),
-        backgroundColor: Nicepay.Color(255, 255, 255)
+        backgroundColor: Nicepay.Color(255, 255, 255),
+        withHeader: {
+            "authorization": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJHVUVTVDE2ODQ3Mjc2NjQzOTQiLCJhdXRoIjoiSE9NRU1CRVIiLCJleHAiOjEwMzI0NzI3NjY0fQ.erKfDD0EtCQaD16QnRknDCNkTNSrtd5tI9eGdN63WqJs5FtLYqcqwCh0HO9D0Sc0bmIsQ3f3KIGnfybT19zblA"
+        }
     },
     onSuccess: (message) => {
         alert("SUCCESS!!")
