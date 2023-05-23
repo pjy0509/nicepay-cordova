@@ -77,13 +77,13 @@ var requestPayment = function (data, options, onSuccess, onFail) {
 
 	var successCallback = function (message) {
 		if (onSuccess instanceof Function) {
-			onSuccess(message)
+			onSuccess(JSON.parse(message))
 		}
 	}
 
 	var failureCallback = function (message) {
 		if (onSuccess instanceof Function) {
-			onFail(message)
+			onFail(JSON.parse(message))
 		}
 	}
 
