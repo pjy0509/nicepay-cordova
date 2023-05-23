@@ -11,6 +11,7 @@ import android.webkit.WebViewClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -36,6 +37,8 @@ abstract public class NicepayWebViewClient extends WebViewClient {
 	protected final static String PLAY_GOOGLE_BY_ID = "https://play.google.com/store/apps/details?id=";
 	protected final static String PLAY_GOOGLE_BY_SEARCH_KEYWORD = "https://play.google.com/store/search?q=";
 	
+	public String nextBody = "";
+	
 	public NicepayWebViewClient(Activity activity, Map<String, Object> params, Map<String, Object> options, ArrayList<String> endpoints, Map<String, String> headers) {
 		this.activity = activity;
 		this.params = params;
@@ -46,6 +49,15 @@ abstract public class NicepayWebViewClient extends WebViewClient {
 	
 	@Override
 	public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+		view.evaluateJavascript(
+				"HTMLFormElement.prototype._submit = HTMLFormElement.prototype.submit;\n" +
+						"HTMLFormElement.prototype.submit = function() {\n" +
+						"    NicepayBridge.getBody([...new FormData(this)].map(e => encodeURIComponent(e[0]) + '=' + encodeURIComponent(e[1])).join('&'));\n" +
+						"    this._submit()" +
+						"}",
+				null
+		);
+		
 		onChangeWebviewURL(view, url);
 	}
 	
@@ -63,18 +75,25 @@ abstract public class NicepayWebViewClient extends WebViewClient {
 		if (String.valueOf(params.get("ReturnURL")).equals(url) && headers != null) {
 			if (!isRequestedWithHeader) {
 				try {
-					isRequestedWithHeader = true;
-					
 					URL apiUrl = new URL(url);
 					HttpURLConnection connection = (HttpURLConnection) apiUrl.openConnection();
 					connection.setRequestMethod(request.getMethod());
+					
+					for (Map.Entry<String, String> entry : request.getRequestHeaders().entrySet()) {
+						connection.setRequestProperty(entry.getKey(), entry.getValue());
+					}
 					
 					for (Map.Entry<String, String> entry : headers.entrySet()) {
 						connection.setRequestProperty(entry.getKey(), entry.getValue());
 					}
 					
-					connection.getResponseCode();
+					connection.setDoOutput(true);
+					OutputStream outputStream = connection.getOutputStream();
+					outputStream.write(nextBody.getBytes());
+					outputStream.flush();
+					outputStream.close();
 					
+					connection.getResponseCode();
 					onChangeWebviewURL(view, url);
 				} catch (IOException e) {
 					return webResourceResponse;

@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Button;
@@ -28,7 +29,8 @@ import kr.co.hotelguide.hotelga.R;
 
 
 public class NicepayActivity extends Activity {
-	WebView webview;
+	WebView webView;
+	NicepayWebViewClient nicepayWebViewClient;
 	
 	@SuppressLint("SetJavaScriptEnabled")
 	@Override
@@ -42,14 +44,14 @@ public class NicepayActivity extends Activity {
 		setContentView(identifier);
 		
 		int webViewId = getResources().getIdentifier("webview", "id", getPackageName());
-		webview = findViewById(webViewId);
+		webView = findViewById(webViewId);
 		
-		WebSettings settings = webview.getSettings();
+		WebSettings settings = webView.getSettings();
 		settings.setJavaScriptEnabled(true);
 		settings.setDomStorageEnabled(true);
 		
-		webview.loadUrl(NicepayCordova.WEBVIEW_PATH);
-		webview.setWebChromeClient(new NicepayWebChromeClient());
+		webView.loadUrl(NicepayCordova.WEBVIEW_PATH);
+		webView.setWebChromeClient(new NicepayWebChromeClient());
 		
 		Bundle extras = getIntent().getExtras();
 		
@@ -63,7 +65,10 @@ public class NicepayActivity extends Activity {
 		Map<String, String> headers = ConvertUtils.convert2StringMap(ConvertUtils.convertJSONString2Map(headersString));
 		
 		setActionBar(options);
-		webview.setWebViewClient(new NicepayWebViewClient(this, params, options, endpoints, headers) {
+		
+		webView.addJavascriptInterface(new NicepayBridge(), "NicepayBridge");
+		
+		nicepayWebViewClient = new NicepayWebViewClient(this, params, options, endpoints, headers) {
 			@SuppressLint("ObsoleteSdkInt")
 			@Override
 			public void onPageFinished(WebView view, String url) {
@@ -72,7 +77,9 @@ public class NicepayActivity extends Activity {
 					isWebViewLoaded = true;
 				}
 			}
-		});
+		};
+		
+		webView.setWebViewClient(nicepayWebViewClient);
 	}
 	
 	@SuppressLint({"ClickableViewAccessibility", "UseCompatTextViewDrawableApis"})
@@ -95,7 +102,6 @@ public class NicepayActivity extends Activity {
 			ab.setCustomView(
 					new LinearLayout(NicepayActivity.this) {{
 						Button backButton = new androidx.appcompat.widget.AppCompatButton(NicepayActivity.this) {{
-//                            setBackgroundResource(R.drawable.ic_np_back);
 							setPadding(16, 0, 16, 0);
 							setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_np_back, 0, 0, 0);
 							if (withBackButton) {
@@ -113,7 +119,6 @@ public class NicepayActivity extends Activity {
 						}};
 						
 						Button closeButton = new androidx.appcompat.widget.AppCompatButton(NicepayActivity.this) {{
-//                            setBackgroundResource(R.drawable.ic_np_close);
 							setPadding(16, 0, 16, 0);
 							setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_np_close, 0, 0, 0);
 							if (withCloseButton) {
@@ -190,10 +195,10 @@ public class NicepayActivity extends Activity {
 	protected void onDestroy() {
 		super.onDestroy();
 		
-		webview.clearHistory();
-		webview.clearCache(true);
-		webview.destroy();
-		webview = null;
+		webView.clearHistory();
+		webView.clearCache(true);
+		webView.destroy();
+		webView = null;
 	}
 	
 	@Override
@@ -216,8 +221,8 @@ public class NicepayActivity extends Activity {
 	}
 	
 	protected void goBack() {
-		if (webview.canGoBack()) {
-			webview.goBack();
+		if (webView.canGoBack()) {
+			webView.goBack();
 		} else {
 			showCancelAlert();
 		}
@@ -262,5 +267,12 @@ public class NicepayActivity extends Activity {
 	
 	protected boolean parseBoolean(Object object) {
 		return new ArrayList<>(Arrays.asList("1", "true", "yes")).contains(String.valueOf(object));
+	}
+	
+	public class NicepayBridge {
+		@JavascriptInterface
+		public void getBody(String body) {
+			nicepayWebViewClient.nextBody = body;
+		}
 	}
 }
